@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permainan Kata Adjektif Bentuk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --yellow: #FFE66D;
+            --dark: #2F2F2F;
+            --gray: #ccc;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Quicksand', sans-serif;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            text-align: center;
+        }
+
+        .screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        #ui-layer {
+            position: fixed;
+            top: 10px;
+            width: 100%;
+            display: none;
+            justify-content: space-around;
+            z-index: 100;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 4px solid var(--dark);
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .btn-main {
+            padding: 15px 40px;
+            font-size: 24px;
+            font-family: 'Fredoka One', cursive;
+            background: var(--yellow);
+            border: 5px solid var(--dark);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 10px;
+        }
+
+        .btn-main:hover:not(:disabled) { transform: scale(1.1); }
+        
+        .btn-main:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .menu-container {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 20px;
+            border: 5px solid var(--secondary);
+        }
+
+        .question-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 0 #ddd;
+            max-width: 80%;
+        }
+
+        .quiz-img { width: 250px; height: 200px; object-fit: contain; margin-bottom: 15px; }
+
+        .options-grid { display: grid; gap: 10px; margin-top: 20px; }
+
+        .opt-btn {
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            background: white;
+            border: 3px solid var(--dark);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .opt-btn:disabled {
+            opacity: 1;
+            cursor: default;
+        }
+
+        .opt-selected {
+            background-color: var(--yellow) !important;
+            border-color: var(--primary) !important;
+            transform: scale(0.95); 
+        }
+
+        /* Level 2: Cendawan Style */
+        .mushroom-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .mushroom-wrapper {
+            background: white;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .mushroom { width: 100px; pointer-events: none; }
+
+        .mushroom-disabled {
+            opacity: 0.4;
+            filter: grayscale(1);
+            cursor: not-allowed;
+        }
+
+        .word-normal {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            cursor: pointer;
+            font-size: 32px;
+            font-weight: 700;
+            border-radius: 12px;
+            transition: all 0.2s;
+            border: 3px solid transparent; 
+            background: transparent;
+        }
+
+        .word-correct {
+            background-color: #d4edda !important;
+            border-color: #28a745 !important;
+            color: #155724 !important;
+        }
+
+        .word-wrong {
+            background-color: #f8d7da !important;
+            border-color: #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        #feedback-overlay {
+            display: none;
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            z-index: 1000;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: white;
+        }
+
+        .feedback-btn {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .rank-text {
+            color: var(--primary);
+            font-size: 35px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-family: 'Fredoka One';
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="stat-box">Skor: <span id="score-val">0</span></div>
+        <div class="stat-box">Nyawa: <span id="life-val">❤️❤️❤️❤️❤️</span></div>
+    </div>
+
+    <div id="screen-start" class="screen active" style="background-image: url('background.jpg');">
+        <button class="btn-main" style="position: absolute; bottom: 50px;" onclick="playSound('click'); goToMenu()">MARI MULA!</button>
+    </div>
+
+    <div id="screen-menu" class="screen" style="background-image: url('kosong.jpg');">
+        <div class="menu-container">
+            <h2>PILIH PERINGKAT</h2>
+            <button id="btn-lvl-1" class="btn-main" onclick="playSound('click'); startLevel(1)">PERINGKAT 1</button><br>
+            <button id="btn-lvl-2" class="btn-main" onclick="playSound('click'); startLevel(2)" disabled>PERINGKAT 2 🔒</button><br>
+            <button id="btn-lvl-3" class="btn-main" onclick="playSound('click'); startLevel(3)" disabled>PERINGKAT 3 🔒</button>
+        </div>
+    </div>
+
+    <div id="screen-instruction" class="screen" style="background-image: url('kosong.jpg');">
+        <div class="question-card">
+            <h2 id="instruction-text" style="line-height: 1.5; color: var(--dark);"></h2>
+            <button class="btn-main" style="margin-top: 20px;" onclick="playSound('click'); proceedToQuiz()">MULA CABARAN</button>
+        </div>
+    </div>
+
+    <div id="screen-quiz" class="screen" style="background-image: url('kosong.jpg');">
+        <div class="question-card">
+            <img id="q-image" class="quiz-img" src="" alt="soalan">
+            <h3 id="q-text">Soalan di sini</h3>
+            <div id="q-options" class="options-grid"></div>
+        </div>
+    </div>
+
+    <div id="screen-mushrooms" class="screen" style="background-image: url('kosong.jpg');">
+        <div style="background: rgba(255,255,255,0.8); padding: 10px 30px; border-radius: 20px; border: 3px dashed orange; margin-bottom: 20px;">
+            <h2 style="color: orange; margin: 0;">Pilih Cendawan Untuk Soalan</h2>
+        </div>
+        <div class="mushroom-container" id="mushroom-box"></div>
+    </div>
+
+    <div id="screen-word-click" class="screen" style="background-image: url('kosong.jpg');">
+        <div class="question-card">
+            <h3 style="color: var(--primary);">Klik pada KATA ADJEKTIF dalam ayat ini:</h3>
+            <div id="sentence-container" style="line-height: 2.5;"></div>
+        </div>
+    </div>
+
+    <div id="screen-end" class="screen" style="background-image: url('kosong.jpg');">
+        <h1 style="font-size: 50px; font-family: 'Fredoka One';">TAHNIAH!</h1>
+        <div class="stat-box" style="font-size: 40px;">JUMLAH SKOR: <span id="final-score">0</span></div>
+        <div id="player-rank" class="rank-text"></div>
+        <button class="btn-main" style="margin-top: 30px;" onclick="playSound('click'); location.reload()">MAIN SEMULA</button>
+    </div>
+
+    <div id="feedback-overlay">
+        <button id="feedback-btn" class="btn-main feedback-btn"></button>
+    </div>
+
+    <audio id="bg-music" loop src="fun.mp3"></audio>
+    <audio id="snd-correct" src="betul.wav"></audio>
+    <audio id="snd-wrong" src="wrong.mp3"></audio>
+    <audio id="snd-click" src="click.wav"></audio>
+    <audio id="snd-victory" src="yeay.mp3"></audio>
+
+    <script>
+        let currentLevel = 1;
+        let unlockedLevel = 1;
+        let currentQuestionIdx = 0;
+        let score = 0;
+        let lives = 5; 
+        let musicStarted = false;
+        let lvl2Solved = 0;
+
+        const dataLevel1 = [
+            { img: 'bola.jpg', q: 'Apakah bentuk bola sepak?', options: ['Bulat', 'Segi empat sama', 'Silinder'], ans: 'Bulat' },
+            { img: 'meja.jpg', q: 'Apakah bentuk meja ini?', options: ['Segi empat sama', 'Bujur', 'Segi tiga'], ans: 'Segi empat sama' },
+            { img: 'kotak.jpg', q: 'Apakah bentuk kotak hadiah ini?', options: ['Bulat', 'Segi empat tepat', 'Silinder'], ans: 'Segi empat tepat' },
+            { img: 'piramid.jpg', q: 'Apakah bentuk piramid ini?', options: ['Segi empat sama', 'Segi tiga', 'Bujur'], ans: 'Segi tiga' },
+            { img: 'piring.jpg', q: 'Apakah bentuk piring ini?', options: ['Bulat', 'Segi tiga', 'Segi empat sama'], ans: 'Bulat' },
+            { img: 'lapangan.jpg', q: 'Apakah bentuk lapangan ini?', options: ['Segi empat tepat', 'Bulat', 'Silinder'], ans: 'Segi empat tepat' }
+        ];
+
+        const dataLevel2 = [
+            { text: ["Abang", "bermain", "guli", "yang", "berbentuk", "bulat", "di", "halaman", "rumah."], ans: "bulat" },
+            { text: ["Meja", "itu", "berbentuk", "segi empat sama", "dan", "besar."], ans: "segi empat sama" },
+            { text: ["Adik", "menangis", "kerana", "belon", "kesayangannya", "sudah", "menjadi", "kempis."], ans: "kempis" },
+            { text: ["Bendera", "negara", "itu", "berbentuk", "segi empat."], ans: "segi empat" },
+            { text: ["Piring", "itu", "berbentuk", "bujur", "dan", "lebar."], ans: "bujur" },
+            { text: ["Perut", "Pak Cik Abu", "nampak", "buncit", "kerana", "dia", "kuat", "makan."], ans: "buncit" }
+        ];
+
+        const dataLevel3 = [
+            { img: 'bola.jpg', q: "Bola itu berbentuk ___.", options: ['Bulat', 'Segi empat sama', 'Silinder'], ans: 'Bulat' },
+            { img: 'telur.jpg', q: "Telur ayam yang dibeli oleh ayah itu berbentuk ___.", options: ['Bujur', 'Lurus', 'Bulat'], ans: 'Bujur' },
+            { img: 'tayar.png', q: "Tayar basikal adik telah menjadi ___ selepas terkena paku.", options: ['Buncit', 'Bujur', 'Kempis'], ans: 'Kempis' },
+            { img: 'bendera.jpg', q: "Bendera itu berbentuk ___ dan tegak.", options: ['Segi empat tepat', 'Segi tiga', 'Bulat'], ans: 'Segi empat tepat' },
+            { img: 'kucing.jpg', q: "Perut kucing itu kelihatan ___ kerana baru makan.", options: ['Kempis', 'Buncit', 'Lurus'], ans: 'Buncit' },
+            { img: 'jalan.jpg', q: "Terdapat banyak ___ pada jalan raya itu.", options: ['Bulat', 'Lekuk', 'Bujur'], ans: 'Lekuk' }
+        ];
+
+        function playSound(id) {
+            const el = document.getElementById('snd-' + id);
+            if(el) { 
+                el.currentTime = 0; 
+                el.volume = 1.0; 
+                el.play().catch(e => {}); 
+            }
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('ui-layer').style.display = (id === 'screen-start' || id === 'screen-menu' || id === 'screen-end') ? 'none' : 'flex';
+        }
+
+        function goToMenu() {
+            if(!musicStarted) { 
+                document.getElementById('bg-music').volume = 0.05; 
+                document.getElementById('bg-music').play(); 
+                musicStarted = true; 
+            }
+            document.getElementById('btn-lvl-2').disabled = unlockedLevel < 2;
+            document.getElementById('btn-lvl-2').innerText = unlockedLevel < 2 ? "PERINGKAT 2 🔒" : "PERINGKAT 2";
+            document.getElementById('btn-lvl-3').disabled = unlockedLevel < 3;
+            document.getElementById('btn-lvl-3').innerText = unlockedLevel < 3 ? "PERINGKAT 3 🔒" : "PERINGKAT 3";
+            showScreen('screen-menu');
+        }
+
+        function startLevel(lvl) {
+            currentLevel = lvl;
+            currentQuestionIdx = 0;
+            lvl2Solved = 0;
+            
+            let info = [
+                "", 
+                "Murid dikehendaki memilih jawapan yang betul.", 
+                "Murid dikehendaki mencari kata adjektif bentuk di dalam ayat berikut.", 
+                "Murid dikehendaki memilih kata adjektif bentuk yang bersesuaian berdasarkan ayat."
+            ];
+            
+            document.getElementById('instruction-text').innerText = info[lvl];
+            showScreen('screen-instruction');
+        }
+
+        function proceedToQuiz() {
+            if(currentLevel === 1) loadQuestion(dataLevel1);
+            if(currentLevel === 2) loadMushroomMenu();
+            if(currentLevel === 3) loadQuestion(dataLevel3);
+        }
+
+        function loadQuestion(dataset) {
+            const data = dataset[currentQuestionIdx];
+            document.getElementById('q-image').src = data.img;
+            document.getElementById('q-text').innerText = data.q;
+            const optBox = document.getElementById('q-options');
+            optBox.innerHTML = '';
+            
+            data.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'opt-btn';
+                btn.innerText = opt;
+                btn.onclick = function() {
+                    if(this.disabled) return;
+                    // playSound('click') telah dibuang di sini
+                    
+                    document.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+                    checkAnswer(opt, data.ans, dataset, this);
+                };
+                optBox.appendChild(btn);
+            });
+            showScreen('screen-quiz');
+        }
+
+        function checkAnswer(selected, correct, dataset, btnElement) {
+            const overlay = document.getElementById('feedback-overlay');
+            const fbBtn = document.getElementById('feedback-btn');
+            
+            btnElement.classList.add('opt-selected');
+            
+            if(selected.toLowerCase() === correct.toLowerCase()) {
+                score += 10;
+                document.getElementById('score-val').innerText = score;
+                playSound('correct');
+                
+                setTimeout(() => {
+                    overlay.style.backgroundImage = "url('betul.jpg')";
+                    fbBtn.innerText = "SETERUSNYA";
+                    fbBtn.onclick = () => { playSound('click'); overlay.style.display = 'none'; nextQuestion(dataset); };
+                    overlay.style.display = 'block';
+                }, 600); 
+                
+            } else {
+                lives--; updateLives(); playSound('wrong');
+                
+                setTimeout(() => {
+                    overlay.style.backgroundImage = "url('salah.jpg')";
+                    fbBtn.innerText = "CUBA LAGI";
+                    fbBtn.onclick = () => { 
+                        playSound('click'); 
+                        overlay.style.display = 'none'; 
+                        
+                        btnElement.classList.remove('opt-selected');
+                        document.querySelectorAll('.opt-btn').forEach(b => b.disabled = false);
+                    };
+                    overlay.style.display = 'block';
+                }, 600);
+            }
+        }
+
+        function nextQuestion(dataset) {
+            currentQuestionIdx++;
+            if(currentQuestionIdx < dataset.length) loadQuestion(dataset);
+            else { if(unlockedLevel === currentLevel) unlockedLevel++; goToMenu(); }
+        }
+
+        function loadMushroomMenu() {
+            const box = document.getElementById('mushroom-box');
+            box.innerHTML = '';
+            dataLevel2.forEach((item, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mushroom-wrapper';
+                const img = document.createElement('img');
+                img.src = 'cendawan.jpg'; img.className = 'mushroom';
+                wrapper.onclick = () => { playSound('click'); loadWordClick(index); };
+                wrapper.appendChild(img);
+                box.appendChild(wrapper);
+            });
+            showScreen('screen-mushrooms');
+        }
+
+        function loadWordClick(idx) {
+            const data = dataLevel2[idx];
+            const container = document.getElementById('sentence-container');
+            container.innerHTML = '';
+            data.text.forEach(word => {
+                const span = document.createElement('span');
+                span.className = 'word-normal';
+                span.innerText = word;
+                span.onclick = () => {
+                    // playSound('click') telah dibuang di sini
+                    let cleanWord = word.replace(/[.,]/g, "").toLowerCase();
+                    
+                    if(cleanWord === data.ans.toLowerCase()) {
+                        span.classList.add('word-correct'); 
+                        playSound('correct');
+                        setTimeout(() => checkLvl2Complete(idx), 800);
+                    } else {
+                        span.classList.add('word-wrong'); 
+                        playSound('wrong'); lives--; updateLives();
+                        setTimeout(() => span.classList.remove('word-wrong'), 1000);
+                    }
+                };
+                container.appendChild(span);
+                container.appendChild(document.createTextNode(" ")); 
+            });
+            showScreen('screen-word-click');
+        }
+
+        function checkLvl2Complete(idx) {
+            lvl2Solved++;
+            score += 10;
+            document.getElementById('score-val').innerText = score;
+            if(lvl2Solved >= dataLevel2.length) { if(unlockedLevel === 2) unlockedLevel = 3; goToMenu(); }
+            else { 
+                showScreen('screen-mushrooms');
+                const wraps = document.getElementsByClassName('mushroom-wrapper');
+                if(wraps[idx]) { wraps[idx].classList.add('mushroom-disabled'); wraps[idx].onclick = null; }
+            }
+        }
+
+        function updateLives() {
+            let s = ""; for(let i=0; i<lives; i++) s += "❤️";
+            document.getElementById('life-val').innerText = s || "TIADA NYAWA";
+            if(lives <= 0) { alert("Permainan Tamat!"); location.reload(); }
+        }
+
+        function endGame() {
+            document.getElementById('final-score').innerText = score;
+            let rank = score >= 150 ? "🏆 EMAS" : (score >= 100 ? "🥈 PERAK" : "🥉 GANGSA");
+            document.getElementById('player-rank').innerText = "KEDUDUKAN: " + rank;
+            showScreen('screen-end'); 
+            playSound('victory'); 
+            var end = Date.now() + 4000;
+            (function frame() {
+                confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FF6B6B', '#FFE66D'] });
+                confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#4ECDC4', '#FFE66D'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        const originalNext = nextQuestion;
+        nextQuestion = function(ds) {
+            if(currentLevel === 3 && currentQuestionIdx >= ds.length - 1) { score += 10; endGame(); }
+            else originalNext(ds);
+        };
+    </script>
+</body>
+</html>
